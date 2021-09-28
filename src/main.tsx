@@ -7,9 +7,10 @@ import './index.css'
 
 // @ts-ignore
 if (!window.Cypress) {
-  inspect({
-    iframe: false,
-  })
+  // TODO uncomment me to inspect the machine in real time
+  // inspect({
+  //   iframe: false,
+  // })
 }
 
 const worker = setupWorker(

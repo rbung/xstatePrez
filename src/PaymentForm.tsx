@@ -6,44 +6,47 @@ import {
   FormLabel,
 } from '@chakra-ui/form-control'
 import { Input } from '@chakra-ui/input'
-import { useMachine } from '@xstate/react'
 import React, { useState } from 'react'
 import { proceedPayment } from './api/payment'
-import PaymentFormMachine from './PaymentFormMachine'
 import PaymentKO from './PaymentKO'
 import PaymentOK from './PaymentOK'
 
 export default function PaymentForm() {
+  // TODO create a state machine and use it 😎
+  const [name, setName] = useState('')
+  const [card, setCard] = useState('')
   const [invalidName, setInvalidName] = useState(false)
   const [invalidCard, setInvalidCard] = useState(false)
-  const [machine, send] = useMachine(
-    PaymentFormMachine.withConfig({
-      services: {
-        proceedPayment: (ctx) => proceedPayment({ ...ctx }),
-      },
-    }),
-    { devTools: true },
-  )
-  const { name, card } = machine.context
+  const [displayForm, setDisplayForm] = useState(true)
+  const [paid, setPaid] = useState(false)
+  const [paymentError, setPaymentError] = useState(false)
 
   const handleSubmit = () => {
-    send({ type: 'SUBMIT' })
     setInvalidName(name === '')
     setInvalidCard(card === '')
+    if (name && card) {
+      proceedPayment({ name, card })
+        .then(() => {
+          setPaid(true)
+          setDisplayForm(false)
+        })
+        .catch(() => {
+          setPaymentError(true)
+          setDisplayForm(false)
+        })
+    }
   }
 
   return (
     <>
-      {(machine.matches('updating') || machine.matches('processing')) && (
+      {displayForm && (
         <>
           <FormControl id="name" isRequired isInvalid={invalidName}>
             <FormLabel>Name</FormLabel>
             <Input
               type="text"
               value={name}
-              onChange={(e) =>
-                send({ type: 'UPDATE_NAME', value: e.target.value })
-              }
+              onChange={(e) => setName(e.target.value)}
             />
             <FormErrorMessage>The field is required</FormErrorMessage>
             <FormHelperText>Name on your card</FormHelperText>
@@ -53,9 +56,7 @@ export default function PaymentForm() {
             <Input
               type="text"
               value={card}
-              onChange={(e) =>
-                send({ type: 'UPDATE_CARD', value: e.target.value })
-              }
+              onChange={(e) => setCard(e.target.value)}
             />
             <FormErrorMessage>The field is required</FormErrorMessage>
             <FormHelperText>Your card number</FormHelperText>
@@ -69,11 +70,12 @@ export default function PaymentForm() {
           </Button>
         </>
       )}
-      {machine.matches('success') && <PaymentOK />}
-      {machine.matches('error') && (
+      {paid && <PaymentOK />}
+      {paymentError && (
         <PaymentKO
           onClick={() => {
-            send({ type: 'RETRY' })
+            setPaymentError(false)
+            setDisplayForm(true)
           }}
         />
       )}
